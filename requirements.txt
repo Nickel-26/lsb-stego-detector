@@ -1,0 +1,22 @@
+# Core (CPU) ------------------------------------------------
+numpy>=1.26
+scipy>=1.10
+opencv-python>=4.8
+Pillow>=10.0
+pandas>=2.0
+scikit-learn>=1.3
+xgboost>=2.0
+joblib>=1.3
+matplotlib>=3.7
+seaborn>=0.13
+PyYAML>=6.0
+tqdm>=4.66
+pytest>=8.0
+
+# Web UI ----------------------------------------------------
+streamlit>=1.30
+
+# Deep learning (install a CUDA build matching your driver) --
+# See README "Install PyTorch (GPU)" for the right index-url.
+torch>=2.2
+torchvision>=0.17

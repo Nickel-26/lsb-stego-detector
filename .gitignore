@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Data (never commit)
+data/raw/
+data/processed/
+data/features/
+data/manifest*.csv
+*.npy
+*.npz
+*.pth
+*.pt
+*.joblib
+*.pkl
+
+# Artifacts / outputs
+artifacts/
+notebooks/.ipynb_checkpoints/
+
+# OS
+.DS_Store
