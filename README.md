@@ -200,3 +200,4 @@ tests/
 # lsb-stego-detector
 # lsb-stego-detector
 # lsb-stego-detector
+# lsb-stego-detector
