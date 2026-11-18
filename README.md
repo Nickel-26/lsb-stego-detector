@@ -131,6 +131,113 @@ python -m src.evaluate --model cnn       --artifacts artifacts/cnn       --split
 
 Reports accuracy, precision, recall, F1, ROC-AUC, confusion matrix and
 **FPR at 95% TPR** (`fpr_at_tpr_0.95`), which matters more than raw accuracy.
+`evaluate.py` reloads the saved model, recomputes the metrics and overwrites the
+metrics JSON / plots — it never changes the model weights.
+
+### 5.1 What each metric means
+
+Assume the positive class is `stego` (label `1`):
+
+| Metric | Formula | Meaning |
+|---|---|---|
+| Accuracy | `(TP + TN) / N` | overall fraction of correct decisions |
+| Precision | `TP / (TP + FP)` | of the images we flagged, how many are truly stego |
+| Recall / TPR | `TP / (TP + FN)` | of the real stego images, how many we caught |
+| F1 | `2·P·R / (P + R)` | harmonic mean of precision and recall |
+| ROC-AUC | area under TPR-vs-FPR curve | ranking quality: 0.5 = random, 1.0 = perfect |
+| FPR @ 95% TPR | FP rate where recall first reaches 95% | false alarms when catching 95% of stego |
+| Threshold @ 95% TPR | probability cutoff at that operating point | how to set the UI slider operationally |
+
+Confusion matrices below use this layout:
+
+```text
+                Predicted
+              clean   stego
+Actual clean     TN      FP
+Actual stego     FN      TP
+```
+
+Each split has **300 images: 100 clean + 200 stego**, so the classes are not
+balanced (1:2). Metrics are reported on that same distribution.
+
+### 5.2 Classical model — XGBoost (2,976-dim RGB features)
+
+| Split | n | Accuracy | Precision | Recall | F1 | ROC-AUC | FPR @ 95% | Thresh @ 95% |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Validation | 300 | 0.9267 | 0.9785 | 0.9100 | 0.9430 | 0.98145 | 0.09 | 0.2200 |
+| Test | 300 | **0.9467** | **0.9894** | **0.9300** | **0.9588** | **0.98450** | 0.10 | 0.2347 |
+
+```text
+Validation:  [[96,   4],     Test:  [[98,   2],
+              [18, 182]]             [14, 186]]
+```
+
+### 5.3 CNN model — SRNet-lite (3 × 128 × 128 RGB)
+
+| Split | n | Accuracy | Precision | Recall | F1 | ROC-AUC | FPR @ 95% | Thresh @ 95% |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Validation | 300 | 0.9333 | 0.9891 | 0.9100 | 0.9479 | **0.99065** | **0.03** | 0.2948 |
+| Test | 300 | 0.9133 | 0.9677 | 0.9000 | 0.9326 | 0.98360 | 0.09 | 0.3128 |
+
+```text
+Validation:  [[98,   2],     Test:  [[94,   6],
+              [18, 182]]             [20, 180]]
+```
+
+Test set side by side at threshold 0.5:
+
+| Model | TN | FP | FN | TP | Accuracy | Precision | Recall |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Classical | 98 | 2 | 14 | 186 | 0.947 | 0.989 | 0.930 |
+| CNN | 94 | 6 | 20 | 180 | 0.913 | 0.968 | 0.900 |
+
+### 5.4 Where the ROC curve data comes from
+
+The curve needs only two values per image: the true label (`0`/`1`, from the
+manifest) and the model's continuous `p(stego)` score. `src/utils.py` passes the
+300 pairs from a split to scikit-learn:
+
+```python
+from sklearn.metrics import roc_curve, auc
+fpr, tpr, thresholds = roc_curve(y_true, y_score)
+roc_auc = auc(fpr, tpr)
+```
+
+`roc_curve` sweeps the decision threshold; at each step it reports the true
+positive rate and false positive rate. Plotting TPR against FPR gives the curve
+and the area under it is the AUC. The full `roc.fpr` / `roc.tpr` arrays are saved
+in `metrics_{val,test}.json` and rendered into `roc_{val,test}.png`.
+
+Replot from the saved JSON without reloading a model:
+
+```python
+import json
+import matplotlib.pyplot as plt
+
+for model in ("classical", "cnn"):
+    d = json.load(open(f"artifacts/{model}/metrics_test.json"))
+    plt.plot(d["roc"]["fpr"], d["roc"]["tpr"],
+             label=f"{model} (AUC={d['roc_auc']:.4f})")
+
+plt.plot([0, 1], [0, 1], "k--", label="random")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.legend()
+plt.show()
+```
+
+### 5.5 How to read these results
+
+- Both models are strong on the held-out test split (ROC-AUC ≈ 0.984).
+- The classical model has better test accuracy and precision at threshold 0.5
+  (2 false positives vs. 6 for the CNN).
+- The CNN has the best validation AUC (0.9907) and a much better validation
+  FPR@95 (0.03 vs. 0.09); on the test set its FPR@95 is comparable.
+- At 95% recall, both models still flag roughly **9–10 clean images per 100** —
+  that is the honest operating cost on this dataset. Use the "Threshold @ 95%"
+  values above if that operating point matters more than raw accuracy.
+- No separate ensemble metrics file is saved: the ensemble is a runtime average
+  of the two probabilities in `src/predict.py`.
 
 ---
 
@@ -197,8 +304,3 @@ tests/
 - **SRNet-lite** = frozen SRM high-pass first layer, residual conv blocks, global average
   pooling. No early pooling so the weak LSB signal survives.
 - Splits are **group-aware**: a cover and its stego copy never land in different splits.
-# lsb-stego-detector
-# lsb-stego-detector
-# lsb-stego-detector
-# lsb-stego-detector
-# lsb-stego-detector

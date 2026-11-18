@@ -25,6 +25,13 @@ from src.predict import predict_image
 
 st.set_page_config(page_title="LSB Steganography Detector", page_icon="🕵️", layout="wide")
 
+# Hide Streamlit's built-in "Deploy" toolbar button; nothing else is changed.
+st.markdown(
+    "<style>[data-testid='stAppDeployButton'], .stAppDeployButton "
+    "{ display: none !important; }</style>",
+    unsafe_allow_html=True,
+)
+
 cfg = load_config()
 CLASSICAL_DIR = resolve(Path(cfg["paths"]["artifacts_dir"]) / "classical")
 CNN_DIR = resolve(Path(cfg["paths"]["artifacts_dir"]) / "cnn")
